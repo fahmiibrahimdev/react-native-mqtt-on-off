@@ -1,4 +1,4 @@
-import { Pressable, SafeAreaView, Text, View } from 'react-native';
+import { Pressable, SafeAreaView, Text, View, Switch} from 'react-native';
 import React, { useState, Component, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import init from 'react_native_mqtt';
@@ -25,46 +25,55 @@ export default class App extends Component {
     constructor() {
         super()
         this.state = {
-            textValue: 'TIDAK ADA STATUS',
-            topic: 'testTopic',
-            subscribedTopic: '',
+            textButton: 'ON',
+            valueStatus: '0',
+            topic_pertama: 'rn-lampu/status',
             message: '',
             messageList: [],
-            status: ''
+            status: '',
+            username_mqtt: 'xxx',
+            password_mqtt: 'xxxx',
+            classButton: 'bg-blue-500 p-4 rounded-lg mt-3',
         }
         client.onConnectionLost = this.onConnectionLost;
         client.onMessageArrived = this.onMessageArrived;
     }
 
-    componentDidMount() { // fungsi nya sama kayak document.ready.function() di jQuery
+    componentDidMount() {
         this.connect();
     }
     
-    clickON = () => { // Kirim data ke MQTT ( Lampu Nyala )
-        this.setState({
-            textValue: 'LAMPU NYALA'
-        })
-        var message = new Paho.MQTT.Message("1");
-        message.destinationName = "rn-lampu/status";
+    clickState = () => {
+        if( this.state.valueStatus == '0' ) {
+            this.setState({
+                valueStatus: '1',
+                textButton: 'OFF',
+                classButton: 'bg-red-500 p-4 rounded-lg mt-3'
+            })
+            this._sendMessage("1", this.state.topic_pertama)
+        } else {
+            this.setState({
+                valueStatus: '0',
+                textButton: 'ON',
+                classButton: 'bg-blue-500 p-4 rounded-lg mt-3'
+            })
+            this._sendMessage("0", this.state.topic_pertama)
+        }
+    }
+
+    _sendMessage(messages, topics) {
+        var message = new Paho.MQTT.Message(messages);
+        message.destinationName = topics;
         client.send(message);
     }
 
-    clickOFF = () => { // Kirim data ke MQTT ( Lampu MATI )
-        this.setState({
-            textValue: 'LAMPU MATI'
-        })
-        var message = new Paho.MQTT.Message("0");
-        message.destinationName = "rn-lampu/status";
-        client.send(message);
-    }
-
-    onConnect = () => { // Status Koneksi
+    onConnect = () => {
         console.log('onConnect');
         this.setState({ status: 'connected' });
-        client.subscribe("rn-lampu/status", { qos: 0 });
+        client.subscribe(this.state.topic_pertama, { qos: 0 });
     }
      
-    onFailure = (err) => { // Status Gagal
+    onFailure = (err) => {
         console.log('Connect failed!');
         console.log(err);
         this.setState({ status: 'failed' });
@@ -75,12 +84,12 @@ export default class App extends Component {
             { status: 'Sedang koneksi Ke MQTT' },
             () => {
                 client.connect({
-                    onSuccess: this.onConnect, // jika koneksi MQTT maka jalankan funct ini
-                    userName: "xxx", // username MQTT
-                    password: "xxxx", // password MQTT
+                    onSuccess: this.onConnect,
+                    userName: this.state.username_mqtt,
+                    password: this.state.password_mqtt,
                     useSSL: false,
                     timeout: 3,
-                    onFailure: this.onFailure // jika koneksi MQTT maka jalankan funct ini
+                    onFailure: this.onFailure
                 });
             }
         );
@@ -102,16 +111,10 @@ export default class App extends Component {
     render() {
         return (
             <View className='px-10 mt-48'>
-                <Text>Value: {this.state.textValue}</Text>
-                <Pressable className='bg-blue-500 p-4 rounded-lg mt-3'
-                    onPress={this.clickON}
+                <Pressable className={this.state.classButton}
+                    onPress={this.clickState}
                 >
-                    <Text className='font-bold text-white text-center text-xl'>ON</Text>
-                </Pressable>
-                <Pressable className='bg-red-500 p-4 rounded-lg mt-3'
-                    onPress={this.clickOFF}
-                >
-                    <Text className='font-bold text-white text-center text-xl'>OFF</Text>
+                    <Text className='font-bold text-white text-center text-xl'>{ this.state.textButton }</Text>
                 </Pressable>
             </View>
             
